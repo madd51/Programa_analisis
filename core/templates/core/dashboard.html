@@ -1,0 +1,110 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard de beneficiarios{% endblock %}
+{% block heading %}Dashboard de atención a personas con discapacidad{% endblock %}
+{% block description %}
+Análisis de beneficiarios, beneficios registrados y necesidades de atención.
+{% endblock %}
+
+{% block content %}
+
+<form method="get" class="filters">
+    <div class="form-group">
+        <label for="departamento">Departamento</label>
+        <select name="departamento" id="departamento" class="form-control">
+            <option value="">Todos</option>
+            {% for d in departamentos %}
+                <option value="{{ d }}"
+                    {% if filtro_departamento == d %}selected{% endif %}>
+                    {{ d }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="sexo">Género</label>
+        <select name="sexo" id="sexo" class="form-control">
+            <option value="">Todos</option>
+            {% for s in sexos %}
+                <option value="{{ s }}"
+                    {% if filtro_sexo == s %}selected{% endif %}>
+                    {{ s }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="discapacidad">Tipo de discapacidad</label>
+        <select name="discapacidad" id="discapacidad"
+                class="form-control">
+            <option value="">Todos</option>
+            {% for t in tipos_discapacidad %}
+                <option value="{{ t }}"
+                    {% if filtro_discapacidad == t %}selected{% endif %}>
+                    {{ t }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">
+            Aplicar filtros
+        </button>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+            Limpiar filtros
+        </a>
+    </div>
+</form>
+
+{% if sin_datos %}
+    <div class="welcome-panel">
+        <h2>No hay registros para mostrar</h2>
+        <p>Prueba otros filtros o verifica los datos guardados en PostgreSQL.</p>
+    </div>
+{% else %}
+
+<div class="kpi-grid">
+    <article class="kpi-card">
+        <span class="kpi-label">Beneficiarios registrados</span>
+        <strong class="kpi-value">{{ kpis.total }}</strong>
+        <span class="kpi-note">Con los filtros seleccionados</span>
+    </article>
+
+    <article class="kpi-card">
+        <span class="kpi-label">En evaluación para asignación de beneficios</span>
+        <strong class="kpi-value">{{ kpis.evaluacion }}</strong>
+        <span class="kpi-note">{{ kpis.porcentaje_evaluacion }}% del total</span>
+    </article>
+
+    <article class="kpi-card">
+        <span class="kpi-label">Usuarios de ayudas técnicas</span>
+        <strong class="kpi-value">{{ kpis.porcentaje_ayuda }}%</strong>
+        <span class="kpi-note">{{ kpis.usan_ayuda }} personas</span>
+    </article>
+</div>
+
+<section class="insights">
+    <h2>Hallazgos del análisis</h2>
+    <ul>
+        {% for hallazgo in hallazgos %}
+            <li>{{ hallazgo }}</li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="charts-grid">
+    {% for grafico in graficos %}
+        <article class="chart-card">
+            {{ grafico.html|safe }}
+        </article>
+    {% empty %}
+        <p>No hay suficientes datos para generar gráficos.</p>
+    {% endfor %}
+</section>
+
+{% endif %}
+{% endblock %}

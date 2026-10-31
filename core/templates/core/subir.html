@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+
+  .etl form { background: #f5f7fa; border: 1px solid #d9dee5; border-radius: 8px; padding: 1rem; margin: 1rem 0 1.5rem; }
+  .etl form p, .etl form div { margin: .5rem 0; }
+  .etl .errorlist { color: #b00020; list-style: none; padding: 0; margin: .25rem 0; }
+  .etl .tarjetas { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+  .etl .tarjeta { flex: 1; min-width: 160px; background: #fff; border: 1px solid #d9dee5; border-radius: 8px; padding: .8rem 1rem; }
+  .etl .tarjeta strong { display: block; font-size: 1.8rem; color: #264653; }
+  .etl .tarjeta.mal strong { color: #b00020; }
+  .etl .ok { background: #e6f4ea; border: 1px solid #a8d5b5; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+  .etl .aviso { background: #fff4e5; border: 1px solid #f0c987; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; }
+  .etl table { border-collapse: collapse; width: 100%; margin: .5rem 0 1.5rem; font-size: .92rem; }
+  .etl th, .etl td { border: 1px solid #d9dee5; padding: .4rem .6rem; text-align: left; }
+  .etl th { background: #eef1f5; }
+  .etl .tabla-scroll { overflow-x: auto; }
+</style>
+
+<div class="etl">
+  <h1>Cargar datos de beneficiarios</h1>
+  <p>Sube un archivo <strong>.csv</strong> o <strong>.xlsx</strong>. El sistema limpia los datos, corrige los tipos
+     (fechas, números, textos) y los guarda en la base de datos PostgreSQL.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div>
+      {{ form.archivo.label_tag }}<br>
+      {{ form.archivo }}
+      {{ form.archivo.errors }}
+    </div>
+    <div>
+      {{ form.solo_validar }}
+      <label for="{{ form.solo_validar.id_for_label }}">{{ form.solo_validar.label }}</label>
+    </div>
+    <button type="submit" class="btn btn-primary">Procesar archivo</button>
+  </form>
+
+  {% if resultado %}
+    <h2>Resultado de la limpieza</h2>
+
+    <div class="tarjetas">
+      <div class="tarjeta"><strong>{{ resultado.total_leidas }}</strong>Filas leídas</div>
+      <div class="tarjeta"><strong>{{ resultado.n_validas }}</strong>Filas válidas</div>
+      <div class="tarjeta {% if resultado.n_rechazadas %}mal{% endif %}"><strong>{{ resultado.n_rechazadas }}</strong>Filas rechazadas</div>
+    </div>
+
+    {% if modo_validacion %}
+      <div class="aviso">Modo validación: no se guardó nada en la base de datos. Desmarca la casilla y vuelve a subir el archivo para guardarlo.</div>
+    {% endif %}
+
+    {% if carga %}
+      <div class="ok">
+        <strong>Datos guardados en la base de datos.</strong>
+        <ul>
+          <li>Beneficiarios insertados: <strong>{{ carga.insertados }}</strong></li>
+          <li>Ya existían y se omitieron (mismo nombre, apellidos y fecha de nacimiento): {{ carga.duplicados_omitidos }}</li>
+          <li>Cuidadores insertados: {{ carga.cuidadores }}</li>
+          {% if carga.cuidadores_incompletos %}
+            <li>Cuidadores con datos incompletos (no se guardaron): {{ carga.cuidadores_incompletos }}</li>
+          {% endif %}
+        </ul>
+        <p>Valores nuevos en los catálogos:</p>
+        <ul>
+          {% for nombre, cantidad in carga.catalogos_nuevos.items %}
+            <li>{{ nombre }}: {{ cantidad }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    <h3>Corrección de tipos de datos</h3>
+    <div class="tabla-scroll">
+      <table>
+        <tr><th>Campo</th><th>Tipo original</th><th>Tipo final</th><th>Valores convertidos</th></tr>
+        {% for t in resultado.tipos %}
+          <tr><td>{{ t.campo }}</td><td>{{ t.antes }}</td><td>{{ t.despues }}</td><td>{{ t.convertidos }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+
+    {% if resultado.correcciones %}
+      <h3>Transformaciones aplicadas</h3>
+      <ul>
+        {% for c in resultado.correcciones %}<li>{{ c }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if resultado.advertencias %}
+      <h3>Advertencias (no impiden guardar)</h3>
+      <div class="aviso">
+        <ul>
+          {% for a in resultado.advertencias|slice:":20" %}<li>{{ a }}</li>{% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if resultado.rechazadas %}
+      <h3>Filas rechazadas (no se guardaron)</h3>
+      <div class="tabla-scroll">
+        <table>
+          <tr><th>Fila del archivo</th><th>Persona</th><th>Motivo</th></tr>
+          {% for r in resultado.rechazadas|slice:":50" %}
+            <tr><td>{{ r.fila }}</td><td>{{ r.nombre }}</td><td>{{ r.motivo }}</td></tr>
+          {% endfor %}
+        </table>
+      </div>
+      {% if resultado.n_rechazadas > 50 %}<p>Se muestran las primeras 50 de {{ resultado.n_rechazadas }}.</p>{% endif %}
+    {% endif %}
+
+    {% if resultado.vista_previa %}
+      <h3>Vista previa de los datos ya limpios (primeras 10 filas)</h3>
+      <div class="tabla-scroll">
+        <table>
+          <tr>
+            <th>Fila</th><th>Nombres</th><th>Apellidos</th><th>Nacimiento</th>
+            <th>Departamento</th><th>Municipio</th><th>Ingreso (USD)</th><th>Servicio</th>
+          </tr>
+          {% for f in resultado.vista_previa %}
+            <tr>
+              <td>{{ f.fila }}</td><td>{{ f.nombres }}</td><td>{{ f.apellidos }}</td><td>{{ f.fecha_nacimiento }}</td>
+              <td>{{ f.departamento }}</td><td>{{ f.municipio }}</td><td>{{ f.ingreso_mensual|default:"—" }}</td>
+              <td>{{ f.servicio|default:"Sin servicio" }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

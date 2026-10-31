@@ -1,0 +1,142 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Registrar beneficiario{% endblock %}
+
+{% block heading %}Registro de beneficiarios{% endblock %}
+
+{% block description %}
+Ingrese la información personal y social del beneficiario.
+{% endblock %}
+
+{% block content %}
+
+<div class="form-container">
+
+    <div class="form-header">
+        <span class="form-tag">GESTIÓN DE BENEFICIARIOS</span>
+        <h1>Registro de beneficiario</h1>
+        <p>Completa la información solicitada para registrar un nuevo beneficiario.</p>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+
+        <div class="form-sections">
+
+            {% for grupo in grupos %}
+
+                <section class="form-section">
+
+                    <div class="section-heading">
+                        <span class="section-number">{{ grupo.numero }}</span>
+
+                        <div>
+                            <h2>{{ grupo.titulo }}</h2>
+                            <p>Completa los datos correspondientes.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+
+                        {% for field in grupo.campos %}
+
+                            <div class="form-field
+                                {% if field.name == 'descripcion_ocupacion' or field.name == 'descripcion_discapacidad' or field.name == 'beneficios_org' or field.name == 'descripcion_benef' or field.name == 'direccion' %}full-width{% endif %}">
+
+                                <label for="{{ field.id_for_label }}">
+                                    {{ field.label }}
+
+                                    {% if field.field.required %}
+                                        <span class="required">*</span>
+                                    {% endif %}
+                                </label>
+
+                                {{ field }}
+
+                                {% if field.errors %}
+                                    <span class="field-error">
+                                        {{ field.errors|striptags }}
+                                    </span>
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </section>
+
+            {% endfor %}
+
+            <!-- SECCIÓN DEL CUIDADOR -->
+
+            <section class="form-section caregiver-section">
+
+                <div class="section-heading">
+                    <span class="section-number">05</span>
+
+                    <div>
+                        <h2>Información del cuidador</h2>
+                        <p>Esta sección es opcional. Puedes agregar un cuidador del beneficiario.</p>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+
+                    {% for field in campos_cuidador %}
+
+                        <div class="form-field
+                            {% if field.name == 'direccion_cuidador' %}full-width{% endif %}">
+
+                            <label for="{{ field.id_for_label }}">
+                                {{ field.label }}
+                            </label>
+
+                            {{ field }}
+
+                            {% if field.errors %}
+                                <span class="field-error">
+                                    {{ field.errors|striptags }}
+                                </span>
+                            {% endif %}
+
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            </section>
+
+        </div>
+
+        <!-- BOTONES -->
+        <div class="form-actions">
+            <a href="{% url 'dashboard' %}" class="btn btn-secondary">
+                Cancelar
+            </a>
+
+            <button type="reset" class="btn btn-secondary">
+                Limpiar formulario
+            </button>
+
+            <button type="submit" class="btn btn-primary">
+                Guardar beneficiario
+            </button>
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}
